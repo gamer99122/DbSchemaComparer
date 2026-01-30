@@ -1,0 +1,22 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# Debug/Temporary files
+Diff_Check/
+*.log
+*.tmp
+Sync_Full_Schema_A_to_B.sql
+
+# Rider
+.idea/
