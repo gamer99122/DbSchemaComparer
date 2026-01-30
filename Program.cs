@@ -10,25 +10,25 @@ namespace DbSchemaComparer
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("=== Database Schema Comparer (A -> B) ===");
+            Console.WriteLine("=== 資料庫結構比對工具 (A -> B) ===");
 
-            // --- CENTRALIZED CONFIGURATION ---
-            // Update these variables for your environment
-            string hostA_IP = "127.0.0.1"; // Host A IP or Hostname
-            string dbA_Name = "SourceDB";   // Host A Database Name
+            // --- 集中式配置 ---
+            // 請根據您的環境更新這些變數
+            string hostA_IP = "127.0.0.1"; // 主機 A 的 IP 或主機名稱
+            string dbA_Name = "SourceDB";   // 主機 A 的資料庫名稱
 
-            string hostB_IP = "192.168.1.100"; // Host B IP or Hostname
-            string dbB_Name = "TargetDB";      // Host B Database Name
+            string hostB_IP = "192.168.1.100"; // 主機 B 的 IP 或主機名稱
+            string dbB_Name = "TargetDB";      // 主機 B 的資料庫名稱
 
-            // Safety: The generated SQL script will ONLY be allowed to run on this IP.
+            // 安全性：產生的 SQL 腳本將只允許在此 IP 上執行
             string targetServerIP = "192.168.1.100";
 
-            // Extra Dependency Check (Optional)
+            // 額外的相依性檢查 (可選)
             string dependencyCheckName = "sp_DrgSub_UpdateTbl";
             // ---------------------------------
 
-            // Constructing Connection Strings with Windows Authentication
-            // Integrated Security=True; enables Windows Auth
+            // 使用 Windows 驗證建立連線字串
+            // Integrated Security=True; 啟用 Windows 驗證
             string connStrA = $"Server={hostA_IP};Database={dbA_Name};Integrated Security=True;TrustServerCertificate=True;";
             string connStrB = $"Server={hostB_IP};Database={dbB_Name};Integrated Security=True;TrustServerCertificate=True;";
 
@@ -48,31 +48,31 @@ namespace DbSchemaComparer
                 var schemaB = GetSchema(connStrB);
                 Console.WriteLine($"Loaded {schemaB.Count} columns from Host B.");
 
-                // Initialize Full Sync Script
+                // 初始化完整同步腳本
                 var fullSyncScript = new System.Text.StringBuilder();
-                fullSyncScript.AppendLine("-- Full Synchronization Script: Host A -> Host B");
-                fullSyncScript.AppendLine($"-- Generated at: {DateTime.Now}");
+                fullSyncScript.AppendLine("-- 完整同步腳本：主機 A -> 主機 B");
+                fullSyncScript.AppendLine($"-- 產生時間：{DateTime.Now}");
 
-                // --- SAFETY CHECK BLOCK ---
-                fullSyncScript.AppendLine($"-- SAFETY CHECK: Only allow execution on {targetServerIP}");
+                // --- 安全性檢查區塊 ---
+                fullSyncScript.AppendLine($"-- 安全性檢查：僅允許在 {targetServerIP} 上執行");
                 fullSyncScript.AppendLine($"DECLARE @TargetIP VARCHAR(50) = '{targetServerIP}';");
                 fullSyncScript.AppendLine("DECLARE @ActualIP VARCHAR(50) = CAST(CONNECTIONPROPERTY('local_net_address') AS VARCHAR(50));");
                 fullSyncScript.AppendLine("IF (@ActualIP <> @TargetIP OR @ActualIP IS NULL)");
                 fullSyncScript.AppendLine("BEGIN");
-                fullSyncScript.AppendLine($"    DECLARE @ErrMsg NVARCHAR(200) = N'SAFETY ABORT: This script is restricted to {targetServerIP}. Current Server IP: ' + ISNULL(@ActualIP, 'Local/Unknown');");
-                fullSyncScript.AppendLine("    RAISERROR(@ErrMsg, 20, 1) WITH LOG; -- Severity 20 will terminate the connection");
-                fullSyncScript.AppendLine("    SET NOEXEC ON; -- Stop further execution in this session");
+                fullSyncScript.AppendLine($"    DECLARE @ErrMsg NVARCHAR(200) = N'安全性中止：此腳本僅限於 {targetServerIP} 執行。目前伺服器 IP：' + ISNULL(@ActualIP, 'Local/Unknown');");
+                fullSyncScript.AppendLine("    RAISERROR(@ErrMsg, 20, 1) WITH LOG; -- 嚴重性等級 20 將終止連線");
+                fullSyncScript.AppendLine("    SET NOEXEC ON; -- 停止在此工作階段中進一步執行");
                 fullSyncScript.AppendLine("END");
                 fullSyncScript.AppendLine("GO\n");
                 // --------------------------
 
-                fullSyncScript.AppendLine($"USE [{dbB_Name}]; -- Automatically set to your target DB");
+                fullSyncScript.AppendLine($"USE [{dbB_Name}]; -- 自動設定為您的目標資料庫");
                 fullSyncScript.AppendLine("GO\n");
 
-                // 1. Table Sync
+                // 1. 資料表同步
                 CompareAndSyncTables(schemaA, schemaB, fullSyncScript);
 
-                // 2. Stored Procedure Sync
+                // 2. 預存程序同步
                 Console.WriteLine("\nReading Stored Procedures from Host A...");
                 var procsA = GetStoredProcedures(connStrA);
                 Console.WriteLine($"Loaded {procsA.Count} procedures from Host A.");
@@ -83,7 +83,7 @@ namespace DbSchemaComparer
 
                 CompareAndSyncStoredProcedures(procsA, procsB, fullSyncScript, connStrA, dependencyCheckName);
 
-                // Write File
+                // 寫入檔案
                 string fileName = "Sync_Full_Schema_A_to_B.sql";
                 System.IO.File.WriteAllText(fileName, fullSyncScript.ToString());
 
@@ -145,7 +145,7 @@ namespace DbSchemaComparer
             Console.WriteLine("\n--- Starting Table Schema Comparison & Script Generation ---\n");
 
             script.AppendLine("-- =============================================");
-            script.AppendLine("-- SECTION 1: TABLE SYNCHRONIZATION");
+            script.AppendLine("-- 區段 1：資料表同步");
             script.AppendLine("-- =============================================");
 
             var sourceTables = source.GroupBy(c => new { c.TableSchema, c.TableName });
@@ -157,7 +157,7 @@ namespace DbSchemaComparer
                 string table = tableGroup.Key.TableName;
                 string fullTableName = $"[{schema}].[{table}]";
 
-                // Check if table exists in target
+                // 檢查資料表是否存在於目標中
                 var targetTableCols = target.Where(c => c.TableSchema == schema && c.TableName == table).ToList();
 
                 if (!targetTableCols.Any())
@@ -166,12 +166,12 @@ namespace DbSchemaComparer
                     Console.WriteLine($"[Missing Table] {fullTableName} exists in A but NOT in B. (Generating CREATE TABLE)");
                     Console.ResetColor();
 
-                    script.AppendLine($"-- [Missing Table] Creating {fullTableName}");
+                    script.AppendLine($"-- [缺少資料表] 建立 {fullTableName}");
                     script.AppendLine($"CREATE TABLE {fullTableName} (");
 
-                    var cols = tableGroup.OrderBy(c => c.OrdinalPosition).ToList(); // Assuming OrdinalPosition is captured implicitly by list order or we need to add it. 
-                                                                                    // Note: Previous GetSchema query ORDER BY handles order, but we don't store OrdinalPosition in ColumnInfo.
-                                                                                    // We will just iterate in order they came (which is ordered).
+                    var cols = tableGroup.OrderBy(c => c.OrdinalPosition).ToList(); // 假設 OrdinalPosition 由列表順序隱含捕獲，或者我們需要新增它
+                                                                                    // 注意：先前的 GetSchema 查詢 ORDER BY 處理順序，但我們沒有在 ColumnInfo 中儲存 OrdinalPosition
+                                                                                    // 我們將按照它們來的順序進行迭代（已排序）
 
                     for (int i = 0; i < cols.Count; i++)
                     {
@@ -182,14 +182,14 @@ namespace DbSchemaComparer
                         script.AppendLine($"    [{col.ColumnName}] {typeDef} {nullable}{comma}");
                     }
                     script.AppendLine(");");
-                    script.AppendLine("-- WARNING: Primary Keys, Indexes, and Defaults are NOT included in this auto-generated script.");
+                    script.AppendLine("-- 警告：此自動產生的腳本不包含主鍵、索引和預設值。");
                     script.AppendLine("GO");
 
                     foundIssues = true;
                     continue;
                 }
 
-                // Check columns
+                // 檢查欄位
                 foreach (var colA in tableGroup)
                 {
                     var colB = targetTableCols.FirstOrDefault(c => c.ColumnName == colA.ColumnName);
@@ -203,7 +203,7 @@ namespace DbSchemaComparer
                         string typeDef = GetColumnTypeString(colA);
                         string nullable = colA.IsNullable == "YES" ? "NULL" : "NOT NULL";
 
-                        script.AppendLine($"-- [Missing Column] Adding {colA.ColumnName} to {fullTableName}");
+                        script.AppendLine($"-- [缺少欄位] 將 {colA.ColumnName} 加入 {fullTableName}");
                         script.AppendLine($"ALTER TABLE {fullTableName} ADD [{colA.ColumnName}] {typeDef} {nullable};");
                         script.AppendLine("GO");
 
@@ -211,7 +211,7 @@ namespace DbSchemaComparer
                     }
                     else
                     {
-                        // Compare properties
+                        // 比較屬性
                         bool diff = false;
                         string diffMsg = "";
 
@@ -242,7 +242,7 @@ namespace DbSchemaComparer
                             string typeDef = GetColumnTypeString(colA);
                             string nullable = colA.IsNullable == "YES" ? "NULL" : "NOT NULL";
 
-                            script.AppendLine($"-- [Mismatch] Updating {colA.ColumnName} in {fullTableName} Reason: {diffMsg}");
+                            script.AppendLine($"-- [不符] 更新 {fullTableName} 中的 {colA.ColumnName}，原因：{diffMsg}");
                             script.AppendLine($"ALTER TABLE {fullTableName} ALTER COLUMN [{colA.ColumnName}] {typeDef} {nullable};");
                             script.AppendLine("GO");
 
@@ -268,9 +268,9 @@ namespace DbSchemaComparer
                 string len = (col.MaxLength == -1 || col.MaxLength == null) ? "MAX" : col.MaxLength.ToString();
                 return $"{type}({len})";
             }
-            // For decimal/numeric, we ideally need precision/scale. 
-            // Since we don't have it in ColumnInfo yet, we return base type. 
-            // This is a known limitation of this simple tool.
+            // 對於 decimal/numeric，理想情況下我們需要精確度/小數位數
+            // 由於我們在 ColumnInfo 中還沒有它，我們返回基本型別
+            // 這是此簡單工具的已知限制
             return type;
         }
 
@@ -281,7 +281,7 @@ namespace DbSchemaComparer
             using (var conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                // Using sys.sql_modules because INFORMATION_SCHEMA.ROUTINES often truncates definition at 4000 chars
+                // 使用 sys.sql_modules 因為 INFORMATION_SCHEMA.ROUTINES 經常在 4000 個字元處截斷定義
                 string query = @"
                     SELECT 
                         s.name AS SchemaName,
@@ -290,7 +290,7 @@ namespace DbSchemaComparer
                     FROM sys.sql_modules m
                     INNER JOIN sys.objects o ON m.object_id = o.object_id
                     INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-                    WHERE o.type = 'P'"; // 'P' stands for SQL Stored Procedure
+                    WHERE o.type = 'P'"; // 'P' 代表 SQL 預存程序
 
                 using (var cmd = new SqlCommand(query, conn))
                 using (var reader = cmd.ExecuteReader())
@@ -314,7 +314,7 @@ namespace DbSchemaComparer
             Console.WriteLine("\n--- Starting Stored Procedure Comparison & Script Generation ---\n");
 
             script.AppendLine("\n-- =============================================");
-            script.AppendLine("-- SECTION 2: STORED PROCEDURE SYNCHRONIZATION");
+            script.AppendLine("-- 區段 2：預存程序同步");
             script.AppendLine("-- =============================================");
 
             int missingCount = 0;
@@ -331,10 +331,10 @@ namespace DbSchemaComparer
                 if (procB == null)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"[Missing SP] {fullProcName} exists in A but NOT in B.");
+                    Console.WriteLine($"[缺少 SP] {fullProcName} 存在於 A 但不存在於 B。");
                     Console.ResetColor();
                     needsSync = true;
-                    reason = "Missing in Target";
+                    reason = "目標中缺少";
                     missingCount++;
                 }
                 else
@@ -345,13 +345,13 @@ namespace DbSchemaComparer
                     if (defA != defB)
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"[Content Mismatch] {fullProcName} content is different.");
+                        Console.WriteLine($"[內容不符] {fullProcName} 內容不同。");
                         Console.ResetColor();
                         needsSync = true;
-                        reason = "Content Mismatch";
+                        reason = "內容不符";
                         mismatchCount++;
 
-                        // --- Debug: Write files for manual diff check ---
+                        // --- 除錯：寫入檔案以進行手動差異檢查 ---
                         string safeName = procA.ProcedureName.Replace("\\", "_").Replace("/", "_");
                         System.IO.File.WriteAllText(System.IO.Path.Combine("Diff_Check", $"{safeName}_A.sql"), procA.Definition);
                         System.IO.File.WriteAllText(System.IO.Path.Combine("Diff_Check", $"{safeName}_B.sql"), procB.Definition);
@@ -360,7 +360,7 @@ namespace DbSchemaComparer
 
                 if (needsSync)
                 {
-                    script.AppendLine($"-- Syncing {fullProcName} ({reason})");
+                    script.AppendLine($"-- 同步 {fullProcName} ({reason})");
 
                     string newDefinition = ConvertToCreateOrAlter(procA.Definition);
 
@@ -384,13 +384,13 @@ namespace DbSchemaComparer
                 Console.ResetColor();
             }
 
-            // --- Extra Check for the specific missing dependency user mentioned ---
+            // --- 使用者提到的特定缺少相依性的額外檢查 ---
             CheckSpecificDependency(connStrA, dependencyCheckName);
         }
 
         static void CheckSpecificDependency(string connectionString, string objectName)
         {
-            Console.WriteLine($"\n--- Deep Check for dependency '{objectName}' in Host A ---");
+            Console.WriteLine($"\n--- 在主機 A 中深度檢查相依性 '{objectName}' ---");
             using (var conn = new SqlConnection(connectionString))
             {
                 conn.Open();
@@ -402,14 +402,14 @@ namespace DbSchemaComparer
                     if (result != null)
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"Found '{objectName}' in Host A! It is a: {result}");
+                        Console.WriteLine($"在主機 A 中找到 '{objectName}'！它是一個：{result}");
                         Console.ResetColor();
                     }
                     else
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"'{objectName}' does NOT exist in Host A either.");
-                        Console.WriteLine("This means the source code in A is also referencing a missing object.");
+                        Console.WriteLine($"'{objectName}' 在主機 A 中也不存在。");
+                        Console.WriteLine("這意味著 A 中的原始碼也在參考一個缺少的物件。");
                         Console.ResetColor();
                     }
                 }
@@ -418,12 +418,12 @@ namespace DbSchemaComparer
 
         static string ConvertToCreateOrAlter(string definition)
         {
-            // Regex to find "CREATE PROCEDURE" or "CREATE PROC", ignoring case
-            // We use [\s\S]*? to match any preceding comments/whitespace non-greedily if we wanted to preserve them,
-            // but here we just want to replace the keyword.
+            // 正規表示式來找到 "CREATE PROCEDURE" 或 "CREATE PROC"，忽略大小寫
+            // 我們使用 [\s\S]*? 來非貪婪地匹配任何前面的註解/空白，如果我們想保留它們
+            // 但這裡我們只想替換關鍵字
             var regex = new System.Text.RegularExpressions.Regex(@"\bCREATE\s+(PROC|PROCEDURE)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-            // Replace only the first occurrence
+            // 僅替換第一次出現
             return regex.Replace(definition, "CREATE OR ALTER PROCEDURE", 1);
         }
 
@@ -433,28 +433,28 @@ namespace DbSchemaComparer
 
             string s = sql;
 
-            // 1. Standardize "CREATE OR ALTER" to "CREATE"
+            // 1. 標準化 "CREATE OR ALTER" 為 "CREATE"
             s = System.Text.RegularExpressions.Regex.Replace(s,
                 @"\bCREATE\s+OR\s+ALTER\s+(PROC|PROCEDURE)\b",
                 "CREATE PROCEDURE",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-            // 2. Standardize "CREATE PROC" to "CREATE PROCEDURE"
+            // 2. 標準化 "CREATE PROC" 為 "CREATE PROCEDURE"
             s = System.Text.RegularExpressions.Regex.Replace(s,
                 @"\bCREATE\s+PROC\s+",
                 "CREATE PROCEDURE ",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-            // 3. REMOVE ALL COMMENTS (Optional but safer for exact logic match)
-            // This handles -- comments
+            // 3. 移除所有註解 (可選但對於精確邏輯匹配更安全)
+            // 這處理 -- 註解
             s = System.Text.RegularExpressions.Regex.Replace(s, @"--.*", "");
-            // This handles /* */ comments
+            // 這處理 /* */ 註解
             s = System.Text.RegularExpressions.Regex.Replace(s, @"/\*[\s\S]*?\*/", "");
 
-            // 4. Collapse all whitespace (including newlines/tabs) into single spaces
+            // 4. 將所有空白 (包括換行/tab) 折疊成單一空格
             s = System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ");
 
-            return s.Trim().ToLower(); // Compare in lower case for total safety
+            return s.Trim().ToLower(); // 以小寫比較以確保完全安全
         }
     }
 
